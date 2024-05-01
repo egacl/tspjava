@@ -16,7 +16,6 @@ import java.util.concurrent.Future;
 public class GeneticSearch implements SearchAlgorithm {
 
     private final MyMap map;
-    private int parallelPoblacion;
     private ExecutorService executor;
 
     public GeneticSearch(final MyMap map) {
@@ -51,6 +50,7 @@ public class GeneticSearch implements SearchAlgorithm {
     }
 
     private void printCreatePopulationStats(final List<Tour> population, final long initTime) {
+        long totalTime = System.currentTimeMillis() - initTime;
         var avg = StatsHelper.calculateAvg(population);
         var standardDeviation = StatsHelper.calculateStandardDeviation(population);
         var minorMayor = StatsHelper.getMinorMayor(population);
@@ -59,7 +59,6 @@ public class GeneticSearch implements SearchAlgorithm {
         System.out.println("\t > Promedio: " + avg);
         System.out.println("\t > Desviacion estandar: " + standardDeviation);
         System.out.println("\t > Menor : " + minorMayor.minor.getRouteCost() + " | Mayor : " + minorMayor.mayor.getRouteCost());
-        long totalTime = System.currentTimeMillis() - initTime;
         System.out.println("Tiempo total " + totalTime + " ms");
     }
 
