@@ -10,7 +10,7 @@ import java.util.Random;
 @ToString
 public class Tour {
 
-    private static Random RANDOM = new Random();
+    private static final Random RANDOM = new Random();
 
     private final MyMap map;
     private final Node[] nodes;
@@ -22,7 +22,7 @@ public class Tour {
     }
 
     public void findOptimalSolution(Tour bestNodesSolution) {
-        routeCost = this.calculateDistance();
+        this.routeCost = this.calculateDistance();
         Node t0;
         Node t1;
         int cont = 0;
@@ -47,7 +47,7 @@ public class Tour {
                     this.makeMove(t0, t1, movement.t2, movement.t3);
                     this.makeMove(t0, movement.t3, movement.t4, movement.t5);
                 }
-                routeCost = routeCost - movement.revenue;
+                this.routeCost = this.routeCost - movement.revenue;
                 cont = 0;
             } else {
                 cont++;
@@ -61,7 +61,7 @@ public class Tour {
 
     public Node getRandomNode() {
         int nodeIndex = RANDOM.nextInt(this.nodes.length);
-        return nodes[nodeIndex];
+        return this.nodes[nodeIndex];
     }
 
     public int calculateDistance() {
@@ -198,9 +198,9 @@ public class Tour {
     @Override
     public String toString() {
         final StringBuilder builder = new StringBuilder("Tour Nodes \n");
-        for (int i = 0; i < this.nodes.length; i++) {
+        for (Node node : this.nodes) {
             builder.append("\t[");
-            builder.append(this.nodes[i]);
+            builder.append(node);
             builder.append("],\n");
         }
         return builder.toString();

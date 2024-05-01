@@ -42,7 +42,7 @@ public final class StatsHelper {
         return new MinorMayorResponse(minor, mayor);
     }
 
-    public static class MinorMayorResponse {
+    public static final class MinorMayorResponse {
         public final Tour minor;
         public final Tour mayor;
 

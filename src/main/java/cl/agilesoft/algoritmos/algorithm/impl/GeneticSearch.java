@@ -16,7 +16,7 @@ import java.util.concurrent.Future;
 public class GeneticSearch implements SearchAlgorithm {
 
     private final MyMap map;
-    private ExecutorService executor;
+    private final ExecutorService executor;
 
     public GeneticSearch(final MyMap map) {
         this.map = map;
@@ -26,18 +26,17 @@ public class GeneticSearch implements SearchAlgorithm {
     @Override
     public void search() throws Exception {
         final List<Tour> population = new ArrayList<>(Parameters.POPULATION_QTY);
-        final List<Future<List<Tour>>> asynPopulationTask = new ArrayList<>();
+        final List<Future<List<Tour>>> asyncPopulationTask = new ArrayList<>();
         int chunkSize = (int) Math.ceil((double) Parameters.POPULATION_QTY / Parameters.CREATE_POPULATION_THREADS);
         final long initTime = System.currentTimeMillis();
         for (int k = 0; k < Parameters.CREATE_POPULATION_THREADS; k++) {
             int start = k * chunkSize;
             int end = Math.min(start + chunkSize, Parameters.POPULATION_QTY);
-            int populationQty = end - start;
             // se crean las tareas asyncronas para crear la poblacion
-            asynPopulationTask.add(this.executor.submit(new CreatePopulation(this.map, populationQty)));
+            asyncPopulationTask.add(this.executor.submit(new CreatePopulation(this.map, (end - start))));
         }
         // se espera a que todas las hebras entreguen sus resultados
-        for (Future<List<Tour>> asyncResponse : asynPopulationTask) {
+        for (Future<List<Tour>> asyncResponse : asyncPopulationTask) {
             population.addAll(asyncResponse.get());
         }
         this.printCreatePopulationStats(population, initTime);
@@ -62,15 +61,7 @@ public class GeneticSearch implements SearchAlgorithm {
         System.out.println("Tiempo total " + totalTime + " ms");
     }
 
-    private static class CreatePopulation implements Callable<List<Tour>> {
-
-        private final MyMap map;
-        private final int populationQty;
-
-        public CreatePopulation(final MyMap map, final int populationQty) {
-            this.map = map;
-            this.populationQty = populationQty;
-        }
+    private record CreatePopulation(MyMap map, int populationQty) implements Callable<List<Tour>> {
 
         @Override
         public List<Tour> call() throws Exception {
