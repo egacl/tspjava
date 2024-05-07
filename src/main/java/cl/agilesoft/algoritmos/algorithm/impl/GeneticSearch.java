@@ -12,6 +12,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class GeneticSearch implements SearchAlgorithm {
 
@@ -24,23 +25,34 @@ public class GeneticSearch implements SearchAlgorithm {
     }
 
     @Override
-    public void search() throws Exception {
+    public void search() {
+        // se crea la poblacion
+        final List<Tour> population = this.createPopulation();
+        this.executor.shutdown();
+    }
+
+    private final List<Tour> createPopulation() {
+        final AtomicInteger atomicIndex = new AtomicInteger(0);
         final List<Tour> population = new ArrayList<>(Parameters.POPULATION_QTY);
-        final List<Future<List<Tour>>> asyncPopulationTask = new ArrayList<>();
+        final List<Future<Void>> asyncPopulationTask = new ArrayList<>();
         int chunkSize = (int) Math.ceil((double) Parameters.POPULATION_QTY / Parameters.CREATE_POPULATION_THREADS);
         final long initTime = System.currentTimeMillis();
         for (int k = 0; k < Parameters.CREATE_POPULATION_THREADS; k++) {
             int start = k * chunkSize;
             int end = Math.min(start + chunkSize, Parameters.POPULATION_QTY);
             // se crean las tareas asyncronas para crear la poblacion
-            asyncPopulationTask.add(this.executor.submit(new CreatePopulation(this.map, (end - start))));
+            asyncPopulationTask.add(this.executor.submit(new CreatePopulation(map, (end - start), atomicIndex, population)));
         }
-        // se espera a que todas las hebras entreguen sus resultados
-        for (Future<List<Tour>> asyncResponse : asyncPopulationTask) {
-            population.addAll(asyncResponse.get());
+        try {
+            // se espera a que todas las hebras entreguen sus resultados
+            for (Future<Void> asyncResponse : asyncPopulationTask) {
+                asyncResponse.get();
+            }
+        } catch (Exception err) {
+            throw new RuntimeException("Error durante la generacion de la poblacion");
         }
         this.printCreatePopulationStats(population, initTime);
-        this.executor.shutdown();
+        return population;
     }
 
     @Override
@@ -61,17 +73,28 @@ public class GeneticSearch implements SearchAlgorithm {
         System.out.println("Tiempo total " + totalTime + " ms");
     }
 
-    private record CreatePopulation(MyMap map, int populationQty) implements Callable<List<Tour>> {
+    private static class CreatePopulation implements Callable<Void> {
+
+        private final int populationQty;
+        private final AtomicInteger atomicIndex;
+        private final List<Tour> population;
+        private final MyMap map;
+
+        private CreatePopulation(final MyMap map, final int populationQty, final AtomicInteger atomicIndex, final List<Tour> population) {
+            this.map = map;
+            this.populationQty = populationQty;
+            this.atomicIndex = atomicIndex;
+            this.population = population;
+        }
 
         @Override
-        public List<Tour> call() throws Exception {
-            List<Tour> population = new ArrayList<>(this.populationQty);
+        public Void call() throws Exception {
             for (int k = 0; k < this.populationQty; k++) {
                 final DeepSearch deepSearch = new DeepSearch(this.map);
                 deepSearch.search();
-                population.add(deepSearch.getSolution());
+                this.population.add(atomicIndex.getAndIncrement(), deepSearch.getSolution());
             }
-            return population;
+            return null;
         }
     }
 }

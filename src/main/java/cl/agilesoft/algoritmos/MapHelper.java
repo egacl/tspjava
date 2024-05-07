@@ -15,6 +15,9 @@ import java.util.Random;
 
 public final class MapHelper {
 
+    public static final String MAP_ATT532 = "att532.dat";
+    public static final String MAP_BERLIN52 = "berlin52.dat";
+
     private MapHelper() {
     }
 
