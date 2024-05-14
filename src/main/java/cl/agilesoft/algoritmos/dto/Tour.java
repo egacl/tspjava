@@ -1,16 +1,16 @@
 package cl.agilesoft.algoritmos.dto;
 
 import cl.agilesoft.algoritmos.Parameters;
+import cl.agilesoft.algoritmos.PmxHelper;
 import lombok.Getter;
-import lombok.ToString;
 
-import java.util.Random;
+import java.util.Optional;
+import java.util.concurrent.ThreadLocalRandom;
 
 @Getter
-@ToString
-public class Tour {
+public class Tour implements Comparable<Tour> {
 
-    private static final Random RANDOM = new Random();
+    // private static final Random RANDOM = new Random();
 
     private final MyMap map;
     private final Node[] nodes;
@@ -60,7 +60,7 @@ public class Tour {
     }
 
     public Node getRandomNode() {
-        int nodeIndex = RANDOM.nextInt(this.nodes.length);
+        int nodeIndex = ThreadLocalRandom.current().nextInt(this.nodes.length);
         return this.nodes[nodeIndex];
     }
 
@@ -73,6 +73,47 @@ public class Tour {
             currentNode = nextNode;
         } while (currentNode != this.nodes[0]);
         return totalDistance;
+    }
+
+    public Tour createChild(Tour parent, Optional<Tour> bestSolution) {
+        // final int[] child = PmxHelper.partiallyMappedCrossOver(this, parent);
+        // return MapHelper.createTour(this.map, child);
+        final Tour child = PmxHelper.partiallyMappedCrossOverv2(this, parent);
+        child.routeCost = child.calculateDistance();
+        child.simpleTwoOpt(bestSolution.orElse(null));
+        return child;
+    }
+
+    private void simpleTwoOpt(final Tour bestNodesSolution) {
+        Node t0;
+        Node t1;
+        int cont = 0;
+        final int endSearch = this.nodes.length;
+        while (cont < endSearch) {
+            t0 = this.getRandomNode();
+            t1 = t0.next;
+            if (bestNodesSolution != null) {
+                if (this.hasSameBestEdge(bestNodesSolution, t0, t1)) {
+                    cont++;
+                    continue;
+                }
+            }
+            final Movement movement = this.getMovement(t0, t1);
+            if (movement != null) {
+                if (movement.t4 == null) {
+                    // movimiento 2-opt
+                    this.makeMove(t0, t1, movement.t2, movement.t3);
+                } else {
+                    // movimiento 3-opt
+                    this.makeMove(t0, t1, movement.t2, movement.t3);
+                    this.makeMove(t0, movement.t3, movement.t4, movement.t5);
+                }
+                this.routeCost = this.routeCost - movement.revenue;
+                cont = 0;
+            } else {
+                cont++;
+            }
+        }
     }
 
     private boolean hasSameBestEdge(Tour bestNodesSolution, Node t0, Node t1) {
@@ -195,6 +236,18 @@ public class Tour {
         t2.previous = t1;
     }
 
+    public int[] toIntegerArray() {
+        int[] array = new int[this.nodes.length];
+        Node first = this.nodes[0];
+        array[first.position] = first.id;
+        Node next = first.next;
+        while (next != first) {
+            array[next.position] = next.id;
+            next = next.next;
+        }
+        return array;
+    }
+
     @Override
     public String toString() {
         final StringBuilder builder = new StringBuilder("Tour Nodes \n");
@@ -206,6 +259,11 @@ public class Tour {
         return builder.toString();
     }
 
+    @Override
+    public int compareTo(Tour o) {
+        return Integer.compare(this.routeCost, o.routeCost);
+    }
+
     private static class Movement {
 
         public Node t2;
@@ -213,7 +271,6 @@ public class Tour {
         public Node t4;
         public Node t5;
         public int revenue;
-
 
     }
 

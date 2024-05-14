@@ -47,25 +47,21 @@ public final class MapHelper {
         }
     }
 
-    public static Tour createTour(MyMap map) {
-        int[] randomRoute = generateRandomRoute(map.getDistancesMap().length);
-        /*
-        System.out.print("\nRuta aleatorea: [");
-        for (int i = 0; i < randomRoute.length; i++) {
-            System.out.print(randomRoute[i] + ", ");
-        }
-        System.out.print("]\n");
-         */
-        Node[] nodesRoute = new Node[randomRoute.length];
+    public static Tour createTour(final MyMap map) {
+        return createTour(map, generateRandomRoute(map.getDistancesMap().length));
+    }
+
+    public static Tour createTour(final MyMap map, final int[] route) {
+        Node[] nodesRoute = new Node[route.length];
         Node nextNode = null;
-        for (int i = 0; i < randomRoute.length - 1; i++) {
-            int pos = randomRoute[i];
+        for (int i = 0; i < route.length - 1; i++) {
+            int pos = route[i];
             Node actualNode = nodesRoute[pos];
             if (actualNode == null) {
                 actualNode = new Node(pos, null, null, i);
                 nodesRoute[pos] = actualNode;
             }
-            pos = randomRoute[i + 1];
+            pos = route[i + 1];
             nextNode = new Node(pos, null, actualNode, i + 1);
             actualNode.next = nextNode;
             nodesRoute[pos] = nextNode;

@@ -7,6 +7,7 @@ import cl.agilesoft.algoritmos.dto.MyMap;
 public class Main {
 
     public static void main(String[] args) throws Exception {
+
         final long initTime = System.currentTimeMillis();
         final MyMap map = MapHelper.createMap(MapHelper.MAP_ATT532);
         // final MyMap map = MapHelper.createMap(MapHelper.MAP_BERLIN52);
@@ -19,5 +20,7 @@ public class Main {
             System.out.println(bestSolution.getRouteCost());
             System.out.println("Total time: " + (System.currentTimeMillis() - initTime));
         }
+
     }
+
 }
