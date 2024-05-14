@@ -19,7 +19,7 @@ public class DeepSearch implements SearchAlgorithm {
     @Override
     public void search() {
         long initTime = System.currentTimeMillis();
-        for (int i = 1; i < Parameters.SEARCH_ITERATIONS; i++) {
+        for (int i = 1; i <= Parameters.SEARCH_ITERATIONS; i++) {
             final Tour actualTour = MapHelper.createTour(this.map);
             actualTour.findOptimalSolution(this.bestNodesSolution);
             if (this.bestNodesSolution == null

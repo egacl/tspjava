@@ -49,7 +49,7 @@ public class GeneticSearch implements SearchAlgorithm {
                 asyncResponse.get();
             }
         } catch (Exception err) {
-            throw new RuntimeException("Error durante la generacion de la poblacion");
+            throw new RuntimeException("Error durante la generacion de la poblacion", err);
         }
         this.printCreatePopulationStats(population, initTime);
         return population;
