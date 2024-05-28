@@ -1,5 +1,6 @@
 package cl.agilesoft.algoritmos.dto;
 
+import cl.agilesoft.algoritmos.Parameters;
 import cl.agilesoft.algoritmos.PmxHelper;
 import lombok.Getter;
 
@@ -29,11 +30,21 @@ public class Tour implements Comparable<Tour> {
         final int endSearch = params.getSolutionMultiplier();
         while (cont < endSearch) {
             t0 = this.getRandomNode();
-            t1 = t0.next;
-            if (bestNodesSolution != null) {
-                if (this.hasSameBestEdge(bestNodesSolution, t0, t1)) {
-                    cont++;
-                    continue;
+            final Node init = t0;
+            while (true) {
+                t1 = t0.next;
+                if (bestNodesSolution == null) {
+                    break;
+                }
+                if (bestNodesSolution.getNodeById(t0.id).next.id != t1.id
+                        && bestNodesSolution.getNodeById(t0.id).previous.id != t1.id) {
+                    break;
+                }
+                t0 = t0.next;
+                if (t0 == init) {
+                    t0 = this.getRandomNode();
+                    t1 = t0.next;
+                    break;
                 }
             }
             final Movement movement = this.getMovement(t0, t1, params);
@@ -121,6 +132,33 @@ public class Tour implements Comparable<Tour> {
         this.routeCost = this.routeCost - gtotal;
     }
 
+    public int calcCompatibility(final Tour other) {
+        int sum = 0;
+        for (int i = 0; i <= Parameters.TOUR_AFINITY; i++) {
+            final Node node = this.getRandomNode();
+            if (node.next.id != other.getNodeById(node.id).next.id
+                    && node.next.id != other.getNodeById(node.id).previous.id) {
+                sum++;
+            }
+            if (node.previous.id != other.getNodeById(node.id).next.id
+                    && node.previous.id != other.getNodeById(node.id).previous.id) {
+                sum++;
+            }
+        }
+        return sum;
+        /*
+        std::uniform_int_distribution<int> dist(0,largo-1);
+        int suma=0;
+        for (int i=0;i<CARACTERISTICAS_AFINIDAD;i++){
+            int nodo=dist(engine);
+            if (ady[nodo].siguiente->id!=otro->ady[nodo].siguiente->id && ady[nodo].siguiente->id!=otro->ady[nodo].anterior->id) suma++;
+            if (ady[nodo].anterior->id!=otro->ady[nodo].siguiente->id && ady[nodo].anterior->id!=otro->ady[nodo].anterior->id) suma++;
+        }
+        return suma;
+
+         */
+    }
+
     private boolean hasSameBestEdge(Tour bestNodesSolution, Node t0, Node t1) {
         return (bestNodesSolution.getNodeById(t0.id).next.id == t1.id
                 || bestNodesSolution.getNodeById(t0.id).previous.id == t1.id);
@@ -143,6 +181,7 @@ public class Tour implements Comparable<Tour> {
             int t2t3ActualCost = this.map.getNodesDistance(t2Candidate, t3Candidate);
             int t0t3NewCost = this.map.getNodesDistance(t0, t3Candidate);
             int g1 = g0 + t2t3ActualCost - t0t3NewCost;
+            /*
             if (params.isMoveWithJustG0()) {
                 final Movement movement = new Movement();
                 movement.t2 = t2Candidate;
@@ -150,6 +189,7 @@ public class Tour implements Comparable<Tour> {
                 movement.revenue = g1;
                 return movement;
             }
+             */
             if (g1 <= 0) {
                 for (int t4CandidateID : this.map.getNodeCandidates(t3Candidate.id)) {
                     final Node t4Candidate = this.nodes[t4CandidateID];

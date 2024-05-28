@@ -14,6 +14,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class GeneticSearch implements SearchAlgorithm {
 
     private static final AtomicInteger atomicIndex = new AtomicInteger(0);
+    private static int BEST_NEW_GENERATION = Integer.MAX_VALUE;
 
     private final MyMap map;
     private final ExecutorService executor;
@@ -29,23 +30,28 @@ public class GeneticSearch implements SearchAlgorithm {
         this.createPopulationParams = new DeepSearchParams(Parameters.GENETIC_SEARCH_ITERATIONS
                 , Parameters.GENETIC_SOLUTION_MULTIPLIER * map.getNodesCandidates().size());
         this.nextGenerationParams = new DeepSearchParams(Parameters.GENETIC_SEARCH_NEXTGEN_ITERATIONS
-                , Parameters.NEW_GENERATION_GENETIC_SOLUTION_MULTIPLIER, true);
+                , Parameters.NEW_GENERATION_GENETIC_SOLUTION_MULTIPLIER);
     }
 
     @Override
     public void search() {
         try {
+            Tour best = null;
             for (int iteration = 0; iteration < Parameters.GENETIC_MAIN_ITERATIONS; iteration++) {
-                final long initTime = System.currentTimeMillis();
+                long initTime = System.currentTimeMillis();
                 int counter = 0;
                 // se crea la poblacion
                 this.createPopulation();
-
+                this.printCreatePopulationStats(this.population, initTime, iteration, counter);
                 while (counter < Parameters.NEW_GENERATION_WITHOUT_IMPROVEMENT_COUNTER) {
                     counter++;
+                    initTime = System.currentTimeMillis();
                     this.createNextGeneration();
+                    if (best == null || best != this.bestSolutionEver) {
+                        best = this.bestSolutionEver;
+                        this.printCreatePopulationStats(this.population, initTime, iteration, counter);
+                    }
                 }
-                this.printCreatePopulationStats(this.population, initTime);
             }
         } finally {
             this.executor.shutdown();
@@ -77,12 +83,12 @@ public class GeneticSearch implements SearchAlgorithm {
         if (this.bestSolutionEver == null) {
             this.bestSolutionEver = this.population.getFirst();
         }
-        // this.printCreatePopulationStats(this.population, initTime);
     }
 
     private void createNextGeneration() {
         // System.out.println("Crear generacion");
         atomicIndex.set(0);
+        BEST_NEW_GENERATION = 0;
         this.nextGeneration = new ArrayList<>(Collections.nCopies(Parameters.NEXT_GENERATION_POPULATION_QTY, null));
         final long initTime = System.currentTimeMillis();
         final List<Future<Void>> asyncPopulationTask = new ArrayList<>();
@@ -111,7 +117,6 @@ public class GeneticSearch implements SearchAlgorithm {
             this.bestSolutionEver = bestGen;
         }
         this.population = this.population.subList(0, Parameters.POPULATION_QTY);
-        // this.printCreatePopulationStats(this.population, initTime);
     }
 
     @Override
@@ -119,18 +124,21 @@ public class GeneticSearch implements SearchAlgorithm {
         return this.bestSolutionEver;
     }
 
-    private void printCreatePopulationStats(final List<Tour> list, final long initTime) {
+    private void printCreatePopulationStats(final List<Tour> list, final long initTime, final int iteration, final int generation) {
         long totalTime = System.currentTimeMillis() - initTime;
         var avg = StatsHelper.calculateAvg(list);
         var standardDeviation = StatsHelper.calculateStandardDeviation(list);
         var minorMayor = StatsHelper.getMinorMayor(list);
-        System.out.println("----------------------------------------");
-        System.out.println("Creacion terminada");
-        System.out.println("\t > Poblacion: " + list.size());
-        System.out.println("\t > Promedio: " + avg);
-        System.out.println("\t > Desviacion estandar: " + standardDeviation);
-        System.out.println("\t > Menor : " + minorMayor.minor.getRouteCost() + " | Mayor : " + minorMayor.mayor.getRouteCost());
-        System.out.println("Tiempo total " + totalTime + " ms");
+        System.out.print("> Iteracion: " + iteration);
+        System.out.print("\t > Generacion: " + generation);
+        System.out.print("\t > Menor : " + minorMayor.minor.getRouteCost());
+        System.out.print("\t > Mayor : " + minorMayor.mayor.getRouteCost());
+        System.out.print("\t > Best ever: " + this.bestSolutionEver.getRouteCost());
+        System.out.print("\t\t > Tiempo total: " + totalTime + " ms");
+        System.out.print("\t\t > Poblacion: " + list.size());
+        System.out.print("\t\t > Promedio: " + avg);
+        System.out.print("\t\t > Desviacion estandar: " + standardDeviation);
+        System.out.print("\n");
     }
 
     private class CreatePopulation implements Callable<Void> {
@@ -178,7 +186,14 @@ public class GeneticSearch implements SearchAlgorithm {
                 while (this.run) {
                     // System.out.println("Se inicia torneo");
                     final Tour[] parents = this.getTournamentParents();
-                    for (int childrenIndex = 0; childrenIndex < Parameters.NUMBER_OF_CHILDREN; childrenIndex++) {
+                    int numberOfChildren = Parameters.NUMBER_OF_CHILDREN;
+                    final int parentsCompatibility = parents[0].calcCompatibility(parents[1]);
+                    if (parentsCompatibility > Parameters.UMBRAL_MAX_AFINIDAD) {
+                        numberOfChildren += 2;
+                    } else if (parentsCompatibility > Parameters.UMBRAL_MEDIA_AFINIDAD) {
+                        numberOfChildren += 1;
+                    }
+                    for (int childrenIndex = 0; childrenIndex < numberOfChildren; childrenIndex++) {
                         int individualIndex = 0;
                         synchronized (NEXTGEN_POP_SYNC_OBJECT) {
                             individualIndex = atomicIndex.getAndIncrement();
@@ -189,11 +204,19 @@ public class GeneticSearch implements SearchAlgorithm {
                             }
                         }
                         // System.out.println("Se procede a crear hijo");
+                        Tour best = GeneticSearch.this.population.getFirst();
+                        /*
+                        if (ThreadLocalRandom.current().nextInt(Parameters.HUNDRED_PERCENT) < 10) {
+                            best = GeneticSearch.this.bestSolutionEver;
+                        }
+                         */
                         final Tour children = parents[0].createChild(parents[1]
-                                , GeneticSearch.this.bestSolutionEver
+                                , best
                                 , GeneticSearch.this.nextGenerationParams);
-                        if (children.getRouteCost() >= GeneticSearch.this.bestSolutionEver.getRouteCost()) {
-                            if (ThreadLocalRandom.current().nextInt(Parameters.HUNDRED_PERCENT) < 30) {
+                        synchronized (BESTNODE_SYNC_OBJECT) {
+                            if (children.getRouteCost() < BEST_NEW_GENERATION) {
+                                BEST_NEW_GENERATION = children.getRouteCost();
+                            } else if (ThreadLocalRandom.current().nextInt(Parameters.HUNDRED_PERCENT) < Parameters.MUTATION_PROBABILITY) {
                                 children.mutate();
                             }
                         }
