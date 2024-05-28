@@ -1,10 +1,10 @@
 package cl.agilesoft.algoritmos.dto;
 
-import cl.agilesoft.algoritmos.Parameters;
 import cl.agilesoft.algoritmos.PmxHelper;
 import lombok.Getter;
 
-import java.util.Optional;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
 @Getter
@@ -21,13 +21,12 @@ public class Tour implements Comparable<Tour> {
         this.nodes = nodes;
     }
 
-    public void findOptimalSolution(Tour bestNodesSolution) {
+    public void findOptimalSolution(final Tour bestNodesSolution, final DeepSearchParams params) {
         this.routeCost = this.calculateDistance();
         Node t0;
         Node t1;
         int cont = 0;
-        final int solutionLength = this.nodes.length;
-        final int endSearch = Parameters.SOLUTION_MULTIPLIER * solutionLength;
+        final int endSearch = params.getSolutionMultiplier();
         while (cont < endSearch) {
             t0 = this.getRandomNode();
             t1 = t0.next;
@@ -37,7 +36,7 @@ public class Tour implements Comparable<Tour> {
                     continue;
                 }
             }
-            final Movement movement = this.getMovement(t0, t1);
+            final Movement movement = this.getMovement(t0, t1, params);
             if (movement != null) {
                 if (movement.t4 == null) {
                     // movimiento 2-opt
@@ -75,45 +74,51 @@ public class Tour implements Comparable<Tour> {
         return totalDistance;
     }
 
-    public Tour createChild(Tour parent, Optional<Tour> bestSolution) {
+    public Tour createChild(Tour parent, Tour bestSolution, final DeepSearchParams params) {
         // final int[] child = PmxHelper.partiallyMappedCrossOver(this, parent);
         // return MapHelper.createTour(this.map, child);
         final Tour child = PmxHelper.partiallyMappedCrossOverv2(this, parent);
         child.routeCost = child.calculateDistance();
-        child.simpleTwoOpt(bestSolution.orElse(null));
+        child.findOptimalSolution(bestSolution, params);
         return child;
     }
 
-    private void simpleTwoOpt(final Tour bestNodesSolution) {
-        Node t0;
-        Node t1;
-        int cont = 0;
-        final int endSearch = this.nodes.length;
-        while (cont < endSearch) {
-            t0 = this.getRandomNode();
-            t1 = t0.next;
-            if (bestNodesSolution != null) {
-                if (this.hasSameBestEdge(bestNodesSolution, t0, t1)) {
-                    cont++;
-                    continue;
-                }
+    public void mutate() {
+        final List<CostNodePair> candidates = new ArrayList<>();
+        Node t0 = this.getRandomNode();
+        Node t1 = t0.next;
+        for (int t2CandidateID : this.map.getNodeCandidates(t1.id)) {
+            final Node t2Candidate = this.nodes[t2CandidateID];
+            if (t1.next.id == t2Candidate.id || t0.id == t2Candidate.id) {
+                continue;
             }
-            final Movement movement = this.getMovement(t0, t1);
-            if (movement != null) {
-                if (movement.t4 == null) {
-                    // movimiento 2-opt
-                    this.makeMove(t0, t1, movement.t2, movement.t3);
-                } else {
-                    // movimiento 3-opt
-                    this.makeMove(t0, t1, movement.t2, movement.t3);
-                    this.makeMove(t0, movement.t3, movement.t4, movement.t5);
-                }
-                this.routeCost = this.routeCost - movement.revenue;
-                cont = 0;
-            } else {
-                cont++;
+            int g0 = this.map.getNodesDistance(t0, t1) - this.map.getNodesDistance(t1, t2Candidate);
+            if (g0 > 0) {
+                candidates.add(new CostNodePair(g0, t2Candidate));
             }
         }
+        if (candidates.isEmpty()) {
+            return;
+        }
+        final int randomCandidate = ThreadLocalRandom.current().nextInt(candidates.size());
+        final CostNodePair selected = candidates.get(randomCandidate);
+        final Node t2 = selected.node;
+        final Node t3 = t2.previous;
+        final int gtotal = selected.cost + this.map.getNodesDistance(t2, t3) - this.map.getNodesDistance(t3, t0);
+        int t3t1 = t3.position - t1.position;
+        if (t3t1 < 0) {
+            t3t1 += this.nodes.length;
+        }
+        int t0t2 = t0.position - t2.position;
+        if (t0t2 < 0) {
+            t0t2 += this.nodes.length;
+        }
+        if (t3t1 < t0t2) {
+            this.move(t0, t1, t2, t3);
+        } else {
+            this.move(t3, t2, t1, t0);
+        }
+        this.routeCost = this.routeCost - gtotal;
     }
 
     private boolean hasSameBestEdge(Tour bestNodesSolution, Node t0, Node t1) {
@@ -121,7 +126,7 @@ public class Tour implements Comparable<Tour> {
                 || bestNodesSolution.getNodeById(t0.id).previous.id == t1.id);
     }
 
-    private Movement getMovement(final Node t0, final Node t1) {
+    private Movement getMovement(final Node t0, final Node t1, final DeepSearchParams params) {
         int t0t1ActualCost = this.map.getNodesDistance(t0, t1);
         for (int t2CandidateID : this.map.getNodeCandidates(t1.id)) {
             final Node t2Candidate = this.nodes[t2CandidateID];
@@ -138,6 +143,13 @@ public class Tour implements Comparable<Tour> {
             int t2t3ActualCost = this.map.getNodesDistance(t2Candidate, t3Candidate);
             int t0t3NewCost = this.map.getNodesDistance(t0, t3Candidate);
             int g1 = g0 + t2t3ActualCost - t0t3NewCost;
+            if (params.isMoveWithJustG0()) {
+                final Movement movement = new Movement();
+                movement.t2 = t2Candidate;
+                movement.t3 = t3Candidate;
+                movement.revenue = g1;
+                return movement;
+            }
             if (g1 <= 0) {
                 for (int t4CandidateID : this.map.getNodeCandidates(t3Candidate.id)) {
                     final Node t4Candidate = this.nodes[t4CandidateID];
@@ -236,18 +248,6 @@ public class Tour implements Comparable<Tour> {
         t2.previous = t1;
     }
 
-    public int[] toIntegerArray() {
-        int[] array = new int[this.nodes.length];
-        Node first = this.nodes[0];
-        array[first.position] = first.id;
-        Node next = first.next;
-        while (next != first) {
-            array[next.position] = next.id;
-            next = next.next;
-        }
-        return array;
-    }
-
     @Override
     public String toString() {
         final StringBuilder builder = new StringBuilder("Tour Nodes \n");
@@ -271,6 +271,18 @@ public class Tour implements Comparable<Tour> {
         public Node t4;
         public Node t5;
         public int revenue;
+
+    }
+
+    private static class CostNodePair {
+
+        final int cost;
+        final Node node;
+
+        public CostNodePair(final int cost, final Node node) {
+            this.cost = cost;
+            this.node = node;
+        }
 
     }
 

@@ -3,6 +3,7 @@ package cl.agilesoft.algoritmos.algorithm.impl;
 import cl.agilesoft.algoritmos.Parameters;
 import cl.agilesoft.algoritmos.StatsHelper;
 import cl.agilesoft.algoritmos.algorithm.SearchAlgorithm;
+import cl.agilesoft.algoritmos.dto.DeepSearchParams;
 import cl.agilesoft.algoritmos.dto.MyMap;
 import cl.agilesoft.algoritmos.dto.Tour;
 
@@ -16,19 +17,25 @@ public class GeneticSearch implements SearchAlgorithm {
 
     private final MyMap map;
     private final ExecutorService executor;
+    private final DeepSearchParams createPopulationParams;
+    private final DeepSearchParams nextGenerationParams;
     private Tour bestSolutionEver;
     private List<Tour> population;
     private List<Tour> nextGeneration;
 
     public GeneticSearch(final MyMap map) {
         this.map = map;
-        this.executor = Executors.newFixedThreadPool(Parameters.CREATE_POPULATION_THREADS);
+        this.executor = Executors.newFixedThreadPool(Parameters.THREADS_QTY);
+        this.createPopulationParams = new DeepSearchParams(Parameters.GENETIC_SEARCH_ITERATIONS
+                , Parameters.GENETIC_SOLUTION_MULTIPLIER * map.getNodesCandidates().size());
+        this.nextGenerationParams = new DeepSearchParams(Parameters.GENETIC_SEARCH_NEXTGEN_ITERATIONS
+                , Parameters.NEW_GENERATION_GENETIC_SOLUTION_MULTIPLIER, true);
     }
 
     @Override
     public void search() {
         try {
-            for (int iteration = 0; iteration < Parameters.GENETIC_SEARCH_ITERATIONS; iteration++) {
+            for (int iteration = 0; iteration < Parameters.GENETIC_MAIN_ITERATIONS; iteration++) {
                 final long initTime = System.currentTimeMillis();
                 int counter = 0;
                 // se crea la poblacion
@@ -49,9 +56,9 @@ public class GeneticSearch implements SearchAlgorithm {
         atomicIndex.set(0);
         this.population = new ArrayList<>(Parameters.POPULATION_QTY);
         final List<Future<Void>> asyncPopulationTask = new ArrayList<>();
-        int chunkSize = (int) Math.ceil((double) Parameters.POPULATION_QTY / Parameters.CREATE_POPULATION_THREADS);
+        int chunkSize = (int) Math.ceil((double) Parameters.POPULATION_QTY / Parameters.THREADS_QTY);
         final long initTime = System.currentTimeMillis();
-        for (int k = 0; k < Parameters.CREATE_POPULATION_THREADS; k++) {
+        for (int k = 0; k < Parameters.THREADS_QTY; k++) {
             int start = k * chunkSize;
             int end = Math.min(start + chunkSize, Parameters.POPULATION_QTY);
             // se crean las tareas asyncronas para crear la poblacion
@@ -67,17 +74,19 @@ public class GeneticSearch implements SearchAlgorithm {
         }
         // se ordenan las poblaciones de menor a mayor
         Collections.sort(this.population);
-        this.bestSolutionEver = this.population.getFirst();
+        if (this.bestSolutionEver == null) {
+            this.bestSolutionEver = this.population.getFirst();
+        }
         // this.printCreatePopulationStats(this.population, initTime);
     }
 
     private void createNextGeneration() {
         // System.out.println("Crear generacion");
         atomicIndex.set(0);
-        this.nextGeneration = new ArrayList<>(Parameters.NEXT_GENERATION_POPULATION_QTY);
+        this.nextGeneration = new ArrayList<>(Collections.nCopies(Parameters.NEXT_GENERATION_POPULATION_QTY, null));
         final long initTime = System.currentTimeMillis();
         final List<Future<Void>> asyncPopulationTask = new ArrayList<>();
-        for (int k = 0; k < Parameters.CREATE_POPULATION_THREADS; k++) {
+        for (int k = 0; k < Parameters.THREADS_QTY; k++) {
             asyncPopulationTask.add(this.executor.submit(new CreateNextGenerationTask()));
         }
         try {
@@ -89,11 +98,18 @@ public class GeneticSearch implements SearchAlgorithm {
             throw new RuntimeException("Error durante la creacion de la siguiente generacion", err);
         }
         for (int k = Parameters.PREVIOUS_GENERATION_SURVIVORS_QTY - 1; k < Parameters.NEXT_GENERATION_POPULATION_QTY; k++) {
-            this.population.add(k, this.nextGeneration.get(k));
+            if (k >= Parameters.POPULATION_QTY) {
+                this.population.add(this.nextGeneration.get(k));
+            } else {
+                this.population.set(k, this.nextGeneration.get(k));
+            }
         }
         // se ordenan las poblaciones de menor a mayor
         Collections.sort(this.population);
-        this.bestSolutionEver = this.population.getFirst();
+        final Tour bestGen = this.population.getFirst();
+        if (bestGen.getRouteCost() < GeneticSearch.this.bestSolutionEver.getRouteCost()) {
+            this.bestSolutionEver = bestGen;
+        }
         this.population = this.population.subList(0, Parameters.POPULATION_QTY);
         // this.printCreatePopulationStats(this.population, initTime);
     }
@@ -131,7 +147,8 @@ public class GeneticSearch implements SearchAlgorithm {
         public Void call() throws Exception {
             try {
                 for (int k = 0; k < this.populationQty; k++) {
-                    final DeepSearch deepSearch = new DeepSearch(GeneticSearch.this.map);
+                    final DeepSearch deepSearch = new DeepSearch(GeneticSearch.this.map
+                            , GeneticSearch.this.createPopulationParams);
                     deepSearch.search();
                     var solution = deepSearch.getSolution();
                     synchronized (CREATE_POP_SYNC_OBJECT) {
@@ -172,13 +189,15 @@ public class GeneticSearch implements SearchAlgorithm {
                             }
                         }
                         // System.out.println("Se procede a crear hijo");
-                        final Tour children = parents[0].createChild(parents[1], Optional.of(GeneticSearch.this.bestSolutionEver));
-                        synchronized (BESTNODE_SYNC_OBJECT) {
-                            if (children.getRouteCost() < GeneticSearch.this.bestSolutionEver.getRouteCost()) {
-                                GeneticSearch.this.bestSolutionEver = children;
+                        final Tour children = parents[0].createChild(parents[1]
+                                , GeneticSearch.this.bestSolutionEver
+                                , GeneticSearch.this.nextGenerationParams);
+                        if (children.getRouteCost() >= GeneticSearch.this.bestSolutionEver.getRouteCost()) {
+                            if (ThreadLocalRandom.current().nextInt(Parameters.HUNDRED_PERCENT) < 30) {
+                                children.mutate();
                             }
                         }
-                        GeneticSearch.this.nextGeneration.add(individualIndex, children);
+                        GeneticSearch.this.nextGeneration.set(individualIndex, children);
                     }
                 }
             } catch (Exception err) {
@@ -188,7 +207,7 @@ public class GeneticSearch implements SearchAlgorithm {
         }
 
         private Tour[] getTournamentParents() {
-            final PriorityQueue<Tour> candidates = new PriorityQueue<>(Parameters.TOURNAMENT_SIZE, Tour::compareTo);
+            final Queue<Tour> candidates = new PriorityQueue<>(Parameters.TOURNAMENT_SIZE, Tour::compareTo);
             for (int i = 0; i < Parameters.TOURNAMENT_SIZE; i++) {
                 candidates.add(this.getRandomTour());
             }

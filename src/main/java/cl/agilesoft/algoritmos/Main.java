@@ -17,7 +17,10 @@ public class Main {
         searchAlgorithm.search();
         var bestSolution = searchAlgorithm.getSolution();
         if (bestSolution != null) {
-            System.out.println(bestSolution.getRouteCost());
+            System.out.println("--------------------------------------------------------");
+            System.out.println("--------------------------------------------------------");
+            System.out.println("--------------------------------------------------------");
+            System.out.println("Best solution: " + bestSolution.getRouteCost());
             System.out.println("Total time: " + (System.currentTimeMillis() - initTime));
         }
 
