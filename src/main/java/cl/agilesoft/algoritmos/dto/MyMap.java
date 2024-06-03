@@ -10,14 +10,18 @@ import java.util.List;
 @Getter
 public class MyMap {
 
-    private final String name;
+    private final MapDef mapDef;
     private final int[][] distancesMap;
     private final List<List<Integer>> nodesCandidates;
 
-    public MyMap(final String name, final int[][] distancesMap) {
-        this.name = name;
+    public MyMap(final MapDef mapDef, final int[][] distancesMap) {
+        this.mapDef = mapDef;
         this.distancesMap = distancesMap;
         this.nodesCandidates = this.computeCandidates(distancesMap);
+    }
+
+    public int getBestSolutionResult() {
+        return this.mapDef.getBestSolution();
     }
 
     public List<Integer> getNodeCandidates(int nodeId) {
@@ -57,11 +61,11 @@ public class MyMap {
     @Override
     public String toString() {
         final StringBuilder builder = new StringBuilder("Distances Map for ");
-        builder.append(name).append(":\n");
-        for (int i = 0; i < distancesMap.length; i++) {
+        builder.append(this.mapDef.getFileName()).append(":\n");
+        for (int i = 0; i < this.distancesMap.length; i++) {
             builder.append("\t[");
-            for (int j = 0; j < distancesMap[i].length; j++) {
-                builder.append(distancesMap[i][j]).append(",");
+            for (int j = 0; j < this.distancesMap[i].length; j++) {
+                builder.append(this.distancesMap[i][j]).append(",");
             }
             builder.append("],\n");
         }

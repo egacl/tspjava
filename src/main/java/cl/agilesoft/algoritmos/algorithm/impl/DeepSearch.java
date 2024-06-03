@@ -21,12 +21,15 @@ public class DeepSearch implements SearchAlgorithm {
     @Override
     public void search() {
         for (int i = 1; i <= params.getSearchIterations(); i++) {
-            final Tour actualTour = MapHelper.createTour(this.map);
+            // final Tour actualTour = MapHelper.createRandomTour(this.map);
+            final Tour actualTour = MapHelper.createEfficientRandomTour(this.map);
             actualTour.findOptimalSolution(this.bestNodesSolution, this.params);
             if (this.bestNodesSolution == null
                     || actualTour.getRouteCost() < this.bestNodesSolution.getRouteCost()) {
-                // System.out.println("Solucion mejor encontrada: " + actualTour.getRouteCost());
                 this.bestNodesSolution = actualTour;
+                if (this.bestNodesSolution.getRouteCost() == this.map.getBestSolutionResult()) {
+                    return;
+                }
             }
         }
     }

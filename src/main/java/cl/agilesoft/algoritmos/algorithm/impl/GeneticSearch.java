@@ -50,6 +50,10 @@ public class GeneticSearch implements SearchAlgorithm {
                     if (best == null || best != this.bestSolutionEver) {
                         best = this.bestSolutionEver;
                         this.printCreatePopulationStats(this.population, initTime, iteration, counter);
+                        if (this.bestSolutionEver.getRouteCost() == this.map.getBestSolutionResult()) {
+                            System.out.println("Mejor solucion encontrada!!!!!!!!");
+                            return;
+                        }
                     }
                 }
             }

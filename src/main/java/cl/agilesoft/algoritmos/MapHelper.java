@@ -1,5 +1,6 @@
 package cl.agilesoft.algoritmos;
 
+import cl.agilesoft.algoritmos.dto.MapDef;
 import cl.agilesoft.algoritmos.dto.MyMap;
 import cl.agilesoft.algoritmos.dto.Node;
 import cl.agilesoft.algoritmos.dto.Tour;
@@ -12,19 +13,17 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.ThreadLocalRandom;
 
 public final class MapHelper {
-
-    public static final String MAP_ATT532 = "att532.dat";
-    public static final String MAP_BERLIN52 = "berlin52.dat";
 
     private MapHelper() {
     }
 
-    public static MyMap createMap(String fileName) throws IOException {
-        InputStream inputStream = MapHelper.class.getClassLoader().getResourceAsStream(fileName);
+    public static MyMap createMap(MapDef mapDef) throws IOException {
+        InputStream inputStream = MapHelper.class.getClassLoader().getResourceAsStream(mapDef.getFileName());
         if (inputStream == null) {
-            throw new IllegalArgumentException("El archivo " + fileName + " no se encontró en el directorio resources.");
+            throw new IllegalArgumentException("El archivo " + mapDef.getFileName() + " no se encontró en el directorio resources.");
         }
 
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
@@ -43,15 +42,63 @@ public final class MapHelper {
             for (int i = 0; i < rows.size(); i++) {
                 matrix[i] = rows.get(i);
             }
-            return new MyMap(fileName, matrix);
+            return new MyMap(mapDef, matrix);
         }
     }
 
-    public static Tour createTour(final MyMap map) {
+    public static Tour createRandomTour(final MyMap map) {
         return createTour(map, generateRandomRoute(map.getDistancesMap().length));
     }
 
-    public static Tour createTour(final MyMap map, final int[] route) {
+    public static Tour createEfficientRandomTour(final MyMap map) {
+        final int totalNodes = map.getDistancesMap().length;
+        Node[] nodesRoute = new Node[totalNodes];
+        for (int i = 0; i < totalNodes; i++) {
+            nodesRoute[i] = new Node(-1, null, null, -1);
+        }
+        List<Boolean> visited = new ArrayList<>(Collections.nCopies(totalNodes, false));
+        int initialNode = ThreadLocalRandom.current().nextInt(totalNodes);
+        int actualNode = initialNode;
+        int cont = 0;
+        while (cont++ < totalNodes) {
+            nodesRoute[actualNode].id = actualNode;
+            visited.set(actualNode, true);
+            int nextNode = initialNode;
+            if (cont < totalNodes) {
+                final List<Integer> availableCandidates = new ArrayList<>();
+                final List<Integer> nodeCandidates = map.getNodeCandidates(actualNode);
+                for (Integer nodeCandidate : nodeCandidates) {
+                    if (!visited.get(nodeCandidate)) {
+                        availableCandidates.add(nodeCandidate);
+                    }
+                }
+                if (!availableCandidates.isEmpty()) {
+                    int randomCandidateIndex = ThreadLocalRandom.current().nextInt(availableCandidates.size());
+                    nextNode = availableCandidates.get(randomCandidateIndex);
+                } else {
+                    int posibleCandidateIndex = ThreadLocalRandom.current().nextInt(totalNodes);
+                    while (visited.get(posibleCandidateIndex)) {
+                        posibleCandidateIndex = (posibleCandidateIndex + 1) % totalNodes;
+                    }
+                    nextNode = posibleCandidateIndex;
+                }
+            }
+            nodesRoute[actualNode].next = nodesRoute[nextNode];
+            nodesRoute[nextNode].previous = nodesRoute[actualNode];
+            actualNode = nextNode;
+        }
+        Node nodeInit = nodesRoute[0];
+        nodeInit.position = 0;
+        Node nodeActual = nodeInit.next;
+        int position = 1;
+        while (nodeActual != nodeInit) {
+            nodeActual.position = position++;
+            nodeActual = nodeActual.next;
+        }
+        return new Tour(map, nodesRoute);
+    }
+
+    private static Tour createTour(final MyMap map, final int[] route) {
         Node[] nodesRoute = new Node[route.length];
         Node nextNode = null;
         for (int i = 0; i < route.length - 1; i++) {
