@@ -7,10 +7,10 @@ public final class Parameters {
     public static final int DEFAULT_SEARCH_ITERATIONS = 5000;
 
     public static final int THREADS_QTY = 6;
-    public static final int GENETIC_MAIN_ITERATIONS = 100;
+    public static final int GENETIC_MAIN_ITERATIONS = 25;
     public static final int NEW_GENERATION_WITHOUT_IMPROVEMENT_COUNTER = 35;
     public static final int GENETIC_SOLUTION_MULTIPLIER = 1;
-    public static final int NEW_GENERATION_GENETIC_SOLUTION_MULTIPLIER = 1000;
+    public static final int NEW_GENERATION_GENETIC_SOLUTION_MULTIPLIER = 1500;
     public static final int GENETIC_SEARCH_ITERATIONS = 1;
     public static final int GENETIC_SEARCH_NEXTGEN_ITERATIONS = 532 * 2;
     public static final int POPULATION_QTY = 1000;
