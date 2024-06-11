@@ -24,6 +24,14 @@ public final class Parameters {
     public static final int UMBRAL_MAX_AFINIDAD = 8;
     public static final int UMBRAL_MEDIA_AFINIDAD = 4;
 
+    public static final int ANT_ANTS_SIZE = 25;
+    public static final int ANT_THREADS_QTY = 5;
+    public static final int ANT_PHEROMONES_CANDIDATES = 10;
+    public static final int ANT_PHEROMONE_DEFAULT_QTY = 1;
+    public static final int ANT_PHEROMONE_MULTIPLIEAR = 100;
+    public static final int ANT_SELCET_PHEROMONES_PROBABILITY = 70;
+    public static final int ANT_PHEROMONE_EVAPORATION = 30;
+
     private Parameters() {
     }
 

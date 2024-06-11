@@ -9,7 +9,7 @@ public final class StatsHelper {
     private StatsHelper() {
     }
 
-    public static double calculateAvg(final List<Tour> arr) {
+    public static double calculateAvg(final List<? extends Tour> arr) {
         double suma = 0;
         for (Tour tour : arr) {
             suma += tour.getRouteCost();
@@ -17,7 +17,7 @@ public final class StatsHelper {
         return suma / arr.size();
     }
 
-    public static double calculateStandardDeviation(final List<Tour> arr) {
+    public static double calculateStandardDeviation(final List<? extends Tour> arr) {
         double promedio = calculateAvg(arr);
         double sumaCuadrados = 0;
         for (Tour tour : arr) {
@@ -27,7 +27,7 @@ public final class StatsHelper {
         return Math.sqrt(sumaCuadrados / arr.size());
     }
 
-    public static MinorMayorResponse getMinorMayor(final List<Tour> arr) {
+    public static MinorMayorResponse getMinorMayor(final List<? extends Tour> arr) {
         Tour minor = arr.getFirst();
         Tour mayor = arr.getFirst();
 

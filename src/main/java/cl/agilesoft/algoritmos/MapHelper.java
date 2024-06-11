@@ -56,7 +56,7 @@ public final class MapHelper {
         for (int i = 0; i < totalNodes; i++) {
             nodesRoute[i] = new Node(-1, null, null, -1);
         }
-        List<Boolean> visited = new ArrayList<>(Collections.nCopies(totalNodes, false));
+        final List<Boolean> visited = new ArrayList<>(Collections.nCopies(totalNodes, false));
         int initialNode = ThreadLocalRandom.current().nextInt(totalNodes);
         int actualNode = initialNode;
         int cont = 0;

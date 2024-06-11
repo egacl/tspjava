@@ -13,9 +13,13 @@ public class Tour implements Comparable<Tour> {
 
     // private static final Random RANDOM = new Random();
 
-    private final MyMap map;
-    private final Node[] nodes;
-    private int routeCost;
+    protected final MyMap map;
+    protected Node[] nodes;
+    protected int routeCost;
+
+    public Tour(final MyMap map) {
+        this.map = map;
+    }
 
     public Tour(final MyMap map, final Node[] nodes) {
         this.map = map;

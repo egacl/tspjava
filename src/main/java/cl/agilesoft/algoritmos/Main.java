@@ -16,7 +16,8 @@ public class Main {
         // final MyMap map = MapHelper.createMap(MapDef.BERLIN52);
         // System.out.println(map);
         // SearchAlgorithm searchAlgorithm = AlgorithmFactory.getInstance(AlgorithmFactory.DEEP_SEARCH, map);
-        SearchAlgorithm searchAlgorithm = AlgorithmFactory.getInstance(AlgorithmFactory.GENETIC_SEARCH, map);
+        // SearchAlgorithm searchAlgorithm = AlgorithmFactory.getInstance(AlgorithmFactory.GENETIC_SEARCH, map);
+        SearchAlgorithm searchAlgorithm = AlgorithmFactory.getInstance(AlgorithmFactory.ANT_COLONY, map);
         searchAlgorithm.search();
         var bestSolution = searchAlgorithm.getSolution();
         if (bestSolution != null) {
@@ -27,7 +28,7 @@ public class Main {
             final long totalTime = System.currentTimeMillis() - initTime;
             System.out.println("Total time: " + (totalTime) + " ms" + " || " + TimeUnit.MILLISECONDS.toSeconds(totalTime) + " sec || " + TimeUnit.MILLISECONDS.toMinutes(totalTime) + " min");
         }
-
+        System.out.println("FIN");
     }
 
 }

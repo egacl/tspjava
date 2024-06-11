@@ -2,6 +2,8 @@ package cl.agilesoft.algoritmos.dto;
 
 import cl.agilesoft.algoritmos.Parameters;
 import lombok.Getter;
+import org.apache.commons.math3.distribution.EnumeratedDistribution;
+import org.apache.commons.math3.util.Pair;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -12,12 +14,13 @@ public class MyMap {
 
     private final MapDef mapDef;
     private final int[][] distancesMap;
-    private final List<List<Integer>> nodesCandidates;
+    private List<List<Integer>> nodesCandidates;
+    private List<EnumeratedDistribution<CostIndexPair>> candidatesCumulativeProbability;
 
     public MyMap(final MapDef mapDef, final int[][] distancesMap) {
         this.mapDef = mapDef;
         this.distancesMap = distancesMap;
-        this.nodesCandidates = this.computeCandidates(distancesMap);
+        this.computeCandidates(distancesMap);
     }
 
     public int getBestSolutionResult() {
@@ -28,16 +31,29 @@ public class MyMap {
         return this.nodesCandidates.get(nodeId);
     }
 
+    public List<Integer> getLinearProbabilityNodeCandidate(int nodeId) {
+        final List<Integer> candidates = this.nodesCandidates.get(nodeId);
+        final EnumeratedDistribution<CostIndexPair> distribution = this.candidatesCumulativeProbability.get(nodeId);
+        final List<Integer> probCandidatesList = new ArrayList<>(candidates.size());
+        for (int i = 0; i < candidates.size(); i++) {
+            probCandidatesList.add(distribution.sample().index);
+        }
+        return probCandidatesList;
+    }
+
     public int getNodesDistance(Node a, Node b) {
         return this.distancesMap[a.id][b.id];
     }
 
-    private List<List<Integer>> computeCandidates(int[][] cityDistances) {
+    private void computeCandidates(int[][] cityDistances) {
         int n = cityDistances.length;
-        List<List<Integer>> nodesCandidates = new ArrayList<>();
+        List<Pair<CostIndexPair, Double>> distribution = new ArrayList<>();
+        this.nodesCandidates = new ArrayList<>();
+        this.candidatesCumulativeProbability = new ArrayList<>();
         // Inicializar la lista de listas para almacenar los índices de candidatos.
         for (int i = 0; i < n; i++) {
-            nodesCandidates.add(new ArrayList<>());
+            this.nodesCandidates.add(new ArrayList<>());
+            this.candidatesCumulativeProbability.add(i, null);
         }
         for (int i = 0; i < n; i++) {
             // Lista para mantener los costes y los índices de cada ciudad relacionada.
@@ -50,12 +66,22 @@ public class MyMap {
             }
             // Ordenar la lista de CostIndexPair basado en el coste de menor a mayor.
             Collections.sort(queue);
+            double totalWeight = 0;
             // Agregar los índices de los candidatos de menor coste a nodesCandidates.
             for (int k = 0; k < Parameters.CANDIDATES_LENGTH && k < queue.size(); k++) {
-                nodesCandidates.get(i).add(queue.get(k).index);
+                final CostIndexPair costIndex = queue.get(k);
+                // se agregan los candidatos
+                this.nodesCandidates.get(i).add(costIndex.index);
+                totalWeight += (k + 1);
             }
+            for (int k = 0; k < Parameters.CANDIDATES_LENGTH && k < queue.size(); k++) {
+                final CostIndexPair costIndex = queue.get(k);
+                double probability = (k + 1) / totalWeight;
+                distribution.add(new Pair<>(costIndex, probability));
+            }
+            // se agrega candidatos con probabilidad lineal en base al costo
+            this.candidatesCumulativeProbability.set(i, new EnumeratedDistribution<>(distribution));
         }
-        return nodesCandidates;
     }
 
     @Override
@@ -72,7 +98,7 @@ public class MyMap {
         return builder.toString();
     }
 
-    private static class CostIndexPair implements Comparable<CostIndexPair> {
+    private static final class CostIndexPair implements Comparable<CostIndexPair> {
 
         int cost;
         int index;

@@ -1,6 +1,7 @@
 package cl.agilesoft.algoritmos.algorithm;
 
 import cl.agilesoft.algoritmos.Parameters;
+import cl.agilesoft.algoritmos.algorithm.impl.AntColony;
 import cl.agilesoft.algoritmos.algorithm.impl.DeepSearch;
 import cl.agilesoft.algoritmos.algorithm.impl.GeneticSearch;
 import cl.agilesoft.algoritmos.dto.DeepSearchParams;
@@ -12,6 +13,8 @@ public final class AlgorithmFactory {
 
     public static final int DEEP_SEARCH = 1;
     public static final int GENETIC_SEARCH = 2;
+    public static final int ANT_COLONY = 3;
+
 
     private AlgorithmFactory() {
     }
@@ -24,6 +27,8 @@ public final class AlgorithmFactory {
             return new DeepSearch(map, params);
         } else if (GENETIC_SEARCH == algorithmIdType) {
             return new GeneticSearch(map);
+        } else if (ANT_COLONY == algorithmIdType) {
+            return new AntColony(map);
         }
         throw new InvalidAlgorithmParameterException("No existe el algoritmo con id: " + algorithmIdType);
     }
